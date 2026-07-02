@@ -1,54 +1,76 @@
-const MAX_UPGRADE_DISTANCE = 768;
-const AUTO_UPGRADE_COOLDOWN_TICKS = 10;
+const MAX_PLACEMENT_DISTANCE = 576;
+const PLACEMENT_PREVENTION_TICKS = 200;
 
-function autoUpgrade() {
-    if (!this.myStash || !this.scripts.autoUpgrade) return;
+function autoRebuild() {
+    if (!this.myStash || !this.scripts?.autoRebuild) return;
 
-    // Initialize maps once
-    if (!this.reupgrader) this.reupgrader = new Map();
-    if (!this.inactiveReupgrader) this.inactiveReupgrader = new Map();
+    const list = this.missingAutoRebuildBuildings;
+    if (!list || list.size === 0 || list.length === 0) return;
+    //don't fucking touch this nigger slut
+    this.justSold ??= new Set();
+    this.wasSold ??= new Set();
 
-    // Refresh upgrade maps
-    this.reupgrader.clear();
-    this.inactiveReupgrader.clear();
+    const stashX = Number(this.myStash.x);
+    const stashY = Number(this.myStash.y);
 
-    for (const [, building] of this.autoUpgradeBuildings) {
-        const key = `${building.x - this.myStash.x},${building.y - this.myStash.y},${building.type}`;
+    if (!Number.isFinite(stashX) || !Number.isFinite(stashY)) return;
 
-        this.reupgrader.set(key, building);
+    const iterator = list.forEach ? list.forEach.bind(list) : null;
 
-        const existing = this.missingAutoUpgradeBuildings.find(b =>
-            b.x === building.x &&
-            b.y === building.y &&
-            b.type === building.type
-        );
+    const run = (building) => {
+        const bx = Number(building.x);
+        const by = Number(building.y);
 
-        if (existing) {
-            this.inactiveReupgrader.set(key, existing);
+        if (!Number.isFinite(bx) || !Number.isFinite(by)) return;
+
+        const x = bx + stashX;
+        const y = by + stashY;
+
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+
+        const key = `${Math.round(x)},${Math.round(y)}`;
+
+        // distance check
+        if (this.getDistance(this.myStash, { x, y }) > MAX_PLACEMENT_DISTANCE) return;
+
+        if (!this.enoughPartyMembers(building.type)) return;
+
+        // anti pressure bug
+        if (this.scripts?.antiPressureBug && this.justSold.has(key)) return;
+
+        let canPlace = true;
+
+        if (this.scripts?.antiPressureBug && this.wasSold.has(key)) {
+            const width = ["Wall", "SlowTrap", "Door"].includes(building.type) ? 36 : 72;
+
+            const nearbyEntity = this.SpatialHash?.queryClosest(
+                this.options.sessionId,
+                { x, y },
+                width
+            );
+
+            if (nearbyEntity && this.enemies?.has(nearbyEntity?.id ?? nearbyEntity)) {
+                canPlace = false;
+            }
         }
-    }
 
-    // Upgrade inactive buildings
-    for (const [, building] of this.inactiveReupgrader) {
-        const original = this.reupgrader.get(
-            `${building.x - this.myStash.x},${building.y - this.myStash.y},${building.type}`
-        );
+        if (!canPlace) {
+            if (!this.justSold.has(key)) {
+                this.justSold.add(key);
 
-        if (!original) continue;
-        if (this.getDistance(building) > MAX_UPGRADE_DISTANCE) continue;
-
-        const shouldUpgrade =
-            original.tier === this.myStash.tier
-                ? this.ticks % 20 === 0
-                : (this.ticks + this.bumpUp) % 20 === 0;
-
-        if (!shouldUpgrade) continue;
-
-        if (!building.upgradeCooldown || building.upgradeCooldown <= this.ticks) {
-            building.upgradeCooldown = this.ticks + AUTO_UPGRADE_COOLDOWN_TICKS;
-            this.upgradeBuilding(building.uid);
+                this.waitTicks(PLACEMENT_PREVENTION_TICKS, () => {
+                    this.justSold.delete(key);
+                });
+            }
+            return;
         }
+
+        this.makeBuilding(building.type, { x, y }, building.yaw);
+    };
+
+    if (typeof list.forEach === "function") {
+        list.forEach(run);
     }
 }
 
-export { autoUpgrade };
+export { autoRebuild };
