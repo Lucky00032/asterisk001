@@ -6,11 +6,31 @@
 // @run-at       document-idle
 // @match        *://zombs.io/*
 // @match        *://localhost/*
+// @match        http://104.251.222.78:1000/
+// @grant        none
+// ==/UserScript==
+
+// ==UserScript==
+// @name         Session-Saver
+// @version      1
+// @description  Session-Saver
+// @author       Skk(Batman)
+// @run-at       document-idle
+// @match        *://zombs.io/*
+// @match        *://localhost/*
+// @match        *://104.237.3.243:*/*
+// @match        *://104.251.212.13:*/*
+// @match        *://104.251.212.22:*/*
+// @match        *://104.251.222.78:*/*
 // @grant        none
 // ==/UserScript==
 
 const serverList = {
-    'Localhost': { url: 'ws://localhost:8080', password: 'JKING_IS_A_SKID' }, // add more servers here with the same format  'ServerName': { url: 'url', password: 'password' }
+        'localhost': { url: 'ws://localhost:8080', password: 'JKING_IS_A_SKID' }, // add more servers here with the same format  'ServerName': { url: 'url', password: 'password' }
+    'Base1': { url: 'ws://104.251.222.78:8080', password: 'Lucky0054' },
+    'Base2': { url: 'ws://104.237.3.243:8080', password: 'JKING_IS_A_SKID' },
+    'Fillers': { url: 'ws://104.251.212.13:8080', password: 'Lucky0054' },
+    'Fillers': { url: 'ws://104.251.212.22:8080', password: 'Lucky0054' },
 }
 
 const CLIENT_OPCODES = {
@@ -25,6 +45,12 @@ const CLIENT_OPCODES = {
     8: 'ACCESS_VERIFIED',
     9: 'PING_TEST',
     10: 'SCORE_LOGS'
+};
+const stats = {
+  fps: 0,
+  ping: 0,
+  lag: 0,
+  stutters: 0
 };
 
 const OPCODES = {
@@ -378,7 +404,64 @@ game.inputManager._events.mouseUp[1] = function (event) {
 }
 
 // show intro to switch between sessions faster
+
 document.getElementsByClassName("hud-settings-grid")[0].innerHTML = `
+<div class="perf-panel">
+  <div class="perf-header">
+    <div>Performance</div>
+    <div class="fps">
+      <span id="fps">--</span> FPS
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">PING <span id="ping">--</span></div>
+    <div class="card">LAG <span id="lag">--</span></div>
+    <div class="card">STUTTERS <span id="stutters">--</span></div>
+  </div>
+</div>
+
+<style>
+.perf-panel{
+  background:#1b1b22;
+  color:white;
+  padding:16px;
+  border-radius:12px;
+  font-family:Arial;
+}
+
+.perf-header{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:12px;
+  font-size:20px;
+}
+
+.fps{
+  font-size:32px;
+  color:#ffb347;
+  font-weight:bold;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+.card{
+  background:#262634;
+  padding:10px;
+  border-radius:8px;
+  font-size:14px;
+  color:#aaa;
+}
+
+.card span{
+  float:right;
+  color:white;
+}
+</style>
 <a class="show-intro btn btn-green" style="padding: 0 234px">Show Intro</a>
 <style>
   table.custom-table {
@@ -411,7 +494,31 @@ document.getElementsByClassName("hud-settings-grid")[0].innerHTML = `
   <tbody id="score-logs"></tbody>
 </table>
 `;
+const ui = {
+  fps: document.getElementById("fps"),
+  ping: document.getElementById("ping"),
+  lag: document.getElementById("lag"),
+  stutters: document.getElementById("stutters")
+};
+let frames = 0;
+let lastTime = performance.now();
 
+function fpsLoop() {
+  frames++;
+  const now = performance.now();
+
+  if (now - lastTime >= 1000) {
+    stats.fps = frames;
+    frames = 0;
+    lastTime = now;
+  }
+
+  requestAnimationFrame(fpsLoop);
+}
+fpsLoop();
+setInterval(() => {
+    stats.lag = Math.max(0, stats.ping);
+}, 250);
 let scoreIndex = 0;
 const addScoreLog = ({ wave, score, spw, aspw, highestSpw }) => {
     const tbody = document.getElementById("score-logs");
@@ -429,6 +536,19 @@ const addScoreLog = ({ wave, score, spw, aspw, highestSpw }) => {
 
     tbody.appendChild(row);
 }
+let lastFrame = performance.now();
+
+function detectStutters() {
+    const now = performance.now();
+    const delta = now - lastFrame;
+
+    if (delta > 50) stats.stutters++;
+
+    lastFrame = now;
+    requestAnimationFrame(detectStutters);
+}
+
+detectStutters();
 
 document.getElementsByClassName("show-intro")[0].onclick = () => {
     if (!game.ui.getPlayerTick()) return;
@@ -558,6 +678,7 @@ const scriptToggles = {
     upgradeTowerHealth: "uth",
 };
 
+renderUI();
 const scriptMap = Object.fromEntries(
     Object.entries(scriptToggles).flatMap(([scriptName, acronym]) => {
         return [acronym, scriptName].map(alias => [alias.toLowerCase(), scriptName]);
@@ -745,9 +866,10 @@ class Client {
             case 'UPDATE_SCRIPTS':
                 game.ui.components.PopupOverlay.showHint(`${data.script} got changed with attributes ${JSON.stringify(data.json)}`, 5000);
                 break;
-            case 'PING_TEST':
-                game.ui.components.PopupOverlay.showHint(`Ping is ${data}ms`, 1500);
+                case "PING_TEST":stats.ping = data;game.ui.components.PopupOverlay.showHint(`Ping is ${data}ms`,1500);
                 break;
+                case 'PING_TEST':
+    game.ui.components.PopupOverlay.showHint(`Ping is ${data}ms`, 1500);
             default:
                 console.log(data);
         }
@@ -832,3 +954,46 @@ class Client {
 setInterval(() => {
     if (!window.client) (window.client = new Client())
 }, 2000)
+
+function renderUI() {
+  const rep = game?.world?.getReplicator?.();
+
+  if (!rep) {
+    requestAnimationFrame(renderUI);
+    return;
+  }
+
+  // FPS
+  const fps = rep.getFps?.() ?? 0;
+  document.getElementById("fps").textContent = Math.round(fps);
+
+  // PING (safe fallback chain)
+  const ping =
+    rep.ping ??
+    rep.lastPing ??
+    0;
+
+  document.getElementById("ping").textContent =
+    Math.round(ping);
+
+  // LAG (safe engine method first)
+  let lag = 0;
+
+  if (rep.getDifferenceInClientTime) {
+    lag = rep.getDifferenceInClientTime();
+  } else {
+    lag =
+      (rep.getServerTime?.() ?? 0) -
+      (rep.getClientTime?.() ?? 0);
+  }
+  document.getElementById("lag").textContent =
+    Math.max(0, Math.round(lag));
+
+  // STUTTERS
+  document.getElementById("stutters").textContent =
+    rep.getFrameStutters?.() ?? 0;
+
+  requestAnimationFrame(renderUI);
+}
+
+renderUI();
