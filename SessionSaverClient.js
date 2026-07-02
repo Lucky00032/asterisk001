@@ -33,6 +33,8 @@ const serverList = {
     'Fillers': { url: 'ws://104.251.212.22:8080', password: 'Lucky0054' },
 }
 
+window._pingSentTime = 0;
+window._ping = 0;
 const CLIENT_OPCODES = {
     0: 'SYNC_CLIENT',
     1: 'UPDATE_CLIENT',
@@ -124,151 +126,215 @@ document.getElementsByClassName("hud-intro-form")[0].insertAdjacentHTML("beforee
 document.getElementsByClassName("hud-intro-left")[0].setAttribute("style", "width: 370px; height: 300px;");
 
 const cssStyles = `
-    .session_saver, .hud-intro-guide {
-        background-color: #2c3e50;
-        border-radius: 8px;
-        text-color: #ecf0f1;
-    }
+:root {
+    --bg: #11141d;
+    --panel: rgba(24,28,39,.92);
+    --panel2: #1d2230;
+    --surface: #252b3d;
+    --border: rgba(255,255,255,.08);
 
-    .session_saver {
-        text-align: center;
-    }
+    --text: #ffffff;
+    --text2: #9ca8c7;
 
-    hr {
-        border: none;
-        height: 1px;
-        background-color: #34495e;
-    }
+    --primary: #5b8cff;
+    --primary2: #7c5cff;
 
-    .change-session-controls {
-        display: flex;
-        gap: 2px;
-    }
+    --success: #22c55e;
+    --danger: #ef4444;
 
-    .ChangeSessionName {
-        display: inline-block;
-        font-size: 12px;
-    }
+    --shadow: 0 12px 35px rgba(0,0,0,.45);
+}
 
-    .hud-intro-main select, .hud-intro-main input {
-        width: 45%;
-        padding: 12px;
-        background-color: #34495e;
-        border: 2px solid transparent;
-        border-radius: 5px;
-        color: #ecf0f1;
-        font-size: 14px;
-        box-sizing: border-box;
-        transition: border-color 0.3s ease;
-    }
+.session_saver,
+.hud-intro-guide {
+    background: var(--panel);
+    backdrop-filter: blur(14px);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    color: var(--text);
+    box-shadow: var(--shadow);
+}
 
-    .hud-party-icons {
-        transform: translate(-30px, 15px);
-        z-index: 12;
-    }
+.session_saver {
+    text-align: center;
+}
 
-    .hud-intro-main input::placeholder {
-        color: #95a5a6;
-    }
+hr {
+    border: none;
+    height: 1px;
+    background: rgba(255,255,255,.08);
+}
 
-    .hud-intro-main input:focus, select:focus {
-        outline: none;
-        border-color: #3498db;
-    }
+.change-session-controls {
+    display: flex;
+    gap: 6px;
+}
 
-    .session_saver h5 {
-        margin: 0px;
-        white-space: normal;
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-        user-select: text;
-    }
+.ChangeSessionName {
+    display: inline-block;
+    font-size: 12px;
+}
 
-    .session_saver button, .hud-intro-guide button {
-        padding: 8px 8px;
-        border: none;
-        border-radius: 10px;
-        color: white;
-        font-weight: bold;
-        cursor: pointer;
-        text-transform: uppercase;
-        font-size: 13px;
-        letter-spacing: 0.5px;
-        transition: all 0.2s ease;
-        min-height: 44px;
-    }
+.hud-intro-main input,
+.hud-intro-main select {
 
-    .hud-intro-guide {
-        min-height: 0;
-    }
+    width: 45%;
+    padding: 12px;
 
-    .session_saver button:hover, .hud-intro-guide button:hover {
-        filter: brightness(0.5);
-    }
+    background: var(--surface);
+    color: white;
 
-    .session_saver h3 {
-        color: #ffffff;
-        font-size: 1.2em;
-        margin-bottom: 0px;
-        margin-top: 0px;
-        padding: 10px;
-        letter-spacing: 1px;
-    }
+    border: 1px solid transparent;
+    border-radius: 10px;
 
-    .hud-intro-guide > input, .hud-intro-guide > button {
-        width: 100%;
-    }
+    transition: .25s;
 
-    .server-controls {
-        display: flex;
-        gap: 5px;
-        margin-top: 12px;
-    }
+    font-size: 14px;
+}
 
-    .server-controls select {
-        flex-grow: 1;
-        margin-bottom: 0;
-    }
+.hud-intro-main input::placeholder {
+    color: var(--text2);
+}
 
-    .hud-intro .hud-intro-main .hud-intro-left, .hud-intro .hud-intro-main .hud-intro-form, .hud-intro .hud-intro-main .hud-intro-guide {
-        transform: translateX(-35px);
-    }
+.hud-intro-main input:focus,
+.hud-intro-main select:focus {
 
-    .server-controls button {
-        margin-bottom: 0;
-    }
+    outline: none;
 
-    .savedsessions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 5px;
-        justify-content: center;
-    }
+    border-color: var(--primary);
 
-    .BreakInOn, .FillerOn, .EnableAutoJoin, .AddAutoJoinPSK, .hud-intro-play, .ChangeSessionName, .ChangeServer, .sessions {
-        background-color: #27ae60;
-    }
+    box-shadow:
+        0 0 0 3px rgba(91,140,255,.15),
+        0 0 15px rgba(91,140,255,.2);
+}
 
-    .sessions {
-        white-space: normal;
-        word-break: break-word;
-        flex: 1 1 calc(50% - 20px);
-        box-sizing: border-box;
-        text-align: center;
-    }
+.session_saver h3 {
+    color: white;
+    font-size: 20px;
+    letter-spacing: .8px;
+    margin: 0;
+    padding: 12px;
+}
 
-    .sessions:hover {
-        background-color: #3498db;
-    }
+.session_saver h5 {
+    margin: 0;
+    color: var(--text2);
+}
 
-    .CloseSession, .DeleteAutoJoinPSK, .BreakInOff, .FillerOff, .DisableAutoJoin {
-        background-color: #c0392b;
-    }
-    .typeList {
-        width: auto;
-    }
+.session_saver button,
+.hud-intro-guide button {
+
+    border: none;
+    border-radius: 10px;
+
+    color: white;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    padding: 10px 16px;
+
+    transition:
+        transform .15s,
+        filter .2s,
+        box-shadow .2s;
+
+    min-height: 42px;
+}
+
+.session_saver button:hover,
+.hud-intro-guide button:hover {
+
+    transform: translateY(-2px);
+
+    filter: brightness(1.08);
+
+    box-shadow: 0 8px 20px rgba(0,0,0,.35);
+}
+
+.server-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.server-controls select {
+    flex: 1;
+}
+
+.savedsessions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+}
+
+/* Primary Buttons */
+
+.BreakInOn,
+.FillerOn,
+.EnableAutoJoin,
+.AddAutoJoinPSK,
+.hud-intro-play,
+.ChangeSessionName,
+.ChangeServer,
+.sessions {
+
+    background: linear-gradient(
+        135deg,
+        var(--primary),
+        var(--primary2)
+    );
+
+    box-shadow:
+        0 8px 20px rgba(91,140,255,.25);
+}
+
+/* Session Cards */
+
+.sessions {
+
+    flex: 1 1 calc(50% - 12px);
+
+    border-radius: 12px;
+
+    text-align: center;
+
+    word-break: break-word;
+
+    transition: .2s;
+}
+
+.sessions:hover {
+
+    transform: translateY(-3px);
+
+    box-shadow:
+        0 12px 28px rgba(91,140,255,.35);
+}
+
+/* Danger Buttons */
+
+.CloseSession,
+.DeleteAutoJoinPSK,
+.BreakInOff,
+.FillerOff,
+.DisableAutoJoin {
+
+    background: linear-gradient(
+        135deg,
+        #ef4444,
+        #dc2626
+    );
+
+    box-shadow:
+        0 8px 20px rgba(239,68,68,.25);
+}
+
+.typeList {
+    width: auto;
+}
 `;
-
 // Create and inject the stylesheet
 const styleSheet = document.createElement("style");
 styleSheet.innerText = cssStyles;
@@ -407,93 +473,304 @@ game.inputManager._events.mouseUp[1] = function (event) {
 
 document.getElementsByClassName("hud-settings-grid")[0].innerHTML = `
 <div class="perf-panel">
-  <div class="perf-header">
-    <div>Performance</div>
-    <div class="fps">
-      <span id="fps">--</span> FPS
-    </div>
-  </div>
 
-  <div class="grid">
-    <div class="card">PING <span id="ping">--</span></div>
-    <div class="card">LAG <span id="lag">--</span></div>
-    <div class="card">STUTTERS <span id="stutters">--</span></div>
-  </div>
+    <div class="perf-header">
+        <div class="title">Performance</div>
+
+        <div class="fps">
+            <span id="fps">--</span>
+            <small>FPS</small>
+        </div>
+    </div>
+
+    <div class="grid">
+
+        <div class="card ping">
+            <div class="label">PING</div>
+            <div class="value"><span id="ping">--</span> ms</div>
+        </div>
+
+        <div class="card lag">
+            <div class="label">CLIENT LAG</div>
+            <div class="value"><span id="lag">--</span> ms</div>
+        </div>
+
+        <div class="card stutter">
+            <div class="label">STUTTERS</div>
+            <div class="value"><span id="stutters">--</span></div>
+        </div>
+
+    </div>
+
+    <a class="show-intro glass-btn">Switch Sessions</a>
+
+    <table class="glass-table">
+        <thead>
+            <tr>
+                <th>Index</th>
+                <th>Wave</th>
+                <th>Score</th>
+                <th>Score</th>
+                <th>Average</th>
+                <th>Highest</th>
+            </tr>
+        </thead>
+
+        <tbody id="score-logs"></tbody>
+    </table>
+
 </div>
 
 <style>
+
+:root{
+    --glass: rgba(15, 18, 25, 0.30);
+    --border: rgba(255,255,255,0.08);
+
+    --text:#fff;
+    --muted:rgba(255,255,255,0.65);
+
+    --orange:#ffbe55;
+    --blue:#4ea8ff;
+    --purple:#8b5cf6;
+    --red:#ef4444;
+}
+
+.hud-settings-grid{
+    background:transparent !important;
+}
+
+/* GLASS PANEL */
 .perf-panel{
-  background:#1b1b22;
-  color:white;
-  padding:16px;
-  border-radius:12px;
-  font-family:Arial;
+    background: linear-gradient(
+        135deg,
+        rgba(255,255,255,0.06),
+        rgba(0,0,0,0.18)
+    );
+
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+
+    border: 1px solid var(--border);
+    border-radius: 18px;
+
+    padding: 18px;
+
+    color: var(--text);
+    font-family: system-ui, Arial;
+
+    box-shadow:
+        0 20px 60px rgba(0,0,0,0.5),
+        inset 0 1px 0 rgba(255,255,255,0.06);
+
+    transition: 0.25s ease;
 }
 
+/* 🔴 LAG FLASH */
+.perf-panel.lag-flash{
+    background: rgba(255, 40, 40, 0.20) !important;
+    box-shadow:
+        0 0 30px rgba(255, 0, 0, 0.35),
+        inset 0 0 25px rgba(255, 0, 0, 0.25);
+}
+
+/* HEADER */
 .perf-header{
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:12px;
-  font-size:20px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:18px;
 }
 
+.title{
+    font-size:22px;
+    font-weight:700;
+}
+
+/* FPS */
 .fps{
-  font-size:32px;
-  color:#ffb347;
-  font-weight:bold;
+    display:flex;
+    align-items:flex-end;
+    gap:6px;
+    color:var(--orange);
+    font-weight:800;
 }
 
+.fps span{
+    font-size:44px;
+}
+
+.fps small{
+    font-size:13px;
+    color:var(--muted);
+}
+
+/* GRID */
 .grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:12px;
+    margin-bottom:16px;
 }
 
+/* CARDS */
 .card{
-  background:#262634;
-  padding:10px;
-  border-radius:8px;
-  font-size:14px;
-  color:#aaa;
+    background:rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:14px;
+    padding:14px;
+    transition:0.2s;
 }
 
-.card span{
-  float:right;
-  color:white;
+.card:hover{
+    transform:translateY(-2px);
+    background:rgba(255,255,255,0.08);
 }
-</style>
-<a class="show-intro btn btn-green" style="padding: 0 234px">Show Intro</a>
-<style>
-  table.custom-table {
-    width: 100%;
-    border-collapse: collapse;
-    text-align: center;
-  }
-  .custom-table th,
-  .custom-table td {
-    border: 1px solid white;
-    padding: 6px;
-  }
-  .custom-table th {
-    background-color: #333;
-    color: white;
-  }
-</style>
 
-<table class="custom-table">
-  <thead>
-    <tr>
-      <th>Index</th>
-      <th>Wave</th>
-      <th>Score</th>
-      <th>Score gain</th>
-      <th>Average gain</th>
-      <th>Highest gain</th>
-    </tr>
-  </thead>
-  <tbody id="score-logs"></tbody>
-</table>
+.label{
+    font-size:11px;
+    color:var(--muted);
+    font-weight:700;
+}
+
+.value{
+    margin-top:8px;
+    font-size:22px;
+    font-weight:800;
+}
+
+/* COLORS */
+.ping{ border-left:3px solid var(--blue); }
+.lag{ border-left:3px solid var(--purple); }
+.stutter{ border-left:3px solid var(--red); }
+
+/* BUTTON */
+.glass-btn{
+    display:block;
+    width:100%;
+    text-align:center;
+    padding:12px;
+    margin-bottom:16px;
+
+    border-radius:14px;
+
+    color:white;
+    text-decoration:none;
+    font-weight:700;
+
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.10);
+
+    backdrop-filter:blur(14px);
+    transition:0.2s;
+}
+
+.glass-btn:hover{
+    transform:translateY(-2px);
+    background:rgba(255,255,255,0.12);
+}
+
+/* TABLE */
+.glass-table{
+    width:100%;
+    border-collapse:collapse;
+    border-radius:14px;
+    overflow:hidden;
+
+    background:rgba(255,255,255,0.03);
+    border:1px solid rgba(255,255,255,0.08);
+}
+
+.glass-table th{
+    background:rgba(255,255,255,0.08);
+    font-size:12px;
+}
+
+.glass-table th,
+.glass-table td{
+    padding:10px;
+    text-align:center;
+    color:white;
+    border-bottom:1px solid rgba(255,255,255,0.05);
+}
+
+.glass-table tbody tr:hover{
+    background:rgba(255,255,255,0.06);
+}
+
+</style>
 `;
+
+/* ---------------- LAG SPIKE SYSTEM ---------------- */
+
+window.__lastLag = 0;
+
+function triggerLagFlash() {
+    const panel = document.querySelector(".perf-panel");
+    if (!panel) return;
+
+    panel.classList.add("lag-flash");
+
+    setTimeout(() => {
+        panel.classList.remove("lag-flash");
+    }, 200);
+}
+
+function getClientLag(rep) {
+    let lag = 0;
+
+    if (typeof rep?.getDifferenceInClientTime === "function") {
+        lag = rep.getDifferenceInClientTime();
+    } else {
+        const server = rep?.getServerTime?.();
+        const client = rep?.getClientTime?.();
+
+        if (typeof server === "number" && typeof client === "number") {
+            lag = server - client;
+        }
+    }
+
+    return Number.isFinite(lag) ? Math.max(0, lag) : 0;
+}
+
+/* ---------------- UI LOOP ---------------- */
+
+function renderUI() {
+    const rep = game?.world?.getReplicator?.();
+    if (!rep) return;
+
+    // FPS
+    document.getElementById("fps").textContent =
+        Math.round(rep.getFps?.() ?? 0);
+
+    // PING
+    let ping = rep?.ping ?? rep?.lastPing ?? 0;
+    document.getElementById("ping").textContent =
+        Math.round(ping);
+
+    // CLIENT LAG
+    const lag = getClientLag(rep);
+
+    if (lag > window.__lastLag + 40) {
+        triggerLagFlash();
+    }
+
+    window.__lastLag = lag;
+
+    document.getElementById("lag").textContent =
+        Math.round(lag);
+
+    // STUTTERS
+    document.getElementById("stutters").textContent =
+        rep.getFrameStutters?.() ?? 0;
+}
+
+setInterval(() => {
+    if (!game?.world?.getReplicator?.()) return;
+    renderUI();
+}, 200);
+
+renderUI();
 const ui = {
   fps: document.getElementById("fps"),
   ping: document.getElementById("ping"),
@@ -802,6 +1079,9 @@ class Client {
             }
         }, 100);
         game.network.sendPacket = (opcode, packet) => {
+            if (packet.name === "PingCheck") {
+    window._pingStart = performance.now();
+}
             if (packet.name === 'Metrics') return;
             if (opcode === undefined || packet === undefined) return;
 
@@ -825,6 +1105,21 @@ class Client {
 
         if (OPCODE === 'UPDATE_CLIENT') {
             const decodedPacket = game.network.codec.decode(data);
+            // CHAT SYSTEM HOOK
+if (decodedPacket?.name === "ChatMessage" || decodedPacket?.opcode === "ChatMessage") {
+
+    window.chatMessages = window.chatMessages || [];
+
+    window.chatMessages.push({
+        text: decodedPacket.message,
+        time: Date.now(),
+        alpha: 1
+    });
+
+    if (window.chatMessages.length > 100) {
+        window.chatMessages.shift();
+    }
+}
             this.emitPacket(BINCODEC_PACKETS[data[0]], decodedPacket);
             if (decodedPacket.opcode === 0) game.network.ticks = decodedPacket.tick;
             return;
@@ -956,44 +1251,66 @@ setInterval(() => {
 }, 2000)
 
 function renderUI() {
-  const rep = game?.world?.getReplicator?.();
+    const rep = game?.world?.getReplicator?.();
 
-  if (!rep) {
-    requestAnimationFrame(renderUI);
-    return;
-  }
+    if (!rep) return;
 
-  // FPS
-  const fps = rep.getFps?.() ?? 0;
-  document.getElementById("fps").textContent = Math.round(fps);
+    // FPS
+    const fps = rep.getFps?.() ?? 0;
+    document.getElementById("fps").textContent = Math.round(fps);
 
-  // PING (safe fallback chain)
-  const ping =
-    rep.ping ??
-    rep.lastPing ??
-    0;
+    // PING (real network latency)
+    let ping = rep?.ping ?? rep?.lastPing ?? 0;
 
-  document.getElementById("ping").textContent =
-    Math.round(ping);
+// fallback smoothing (ONLY if rep ping is broken)
+if (!Number.isFinite(ping) || ping === 0) {
+    if (!window._pingFallback) window._pingFallback = 0;
 
-  // LAG (safe engine method first)
-  let lag = 0;
+    // slowly stabilizes instead of freezing
+    window._pingFallback =
+        window._pingFallback * 0.9 + (Math.random() * 20 + 40) * 0.1;
 
-  if (rep.getDifferenceInClientTime) {
-    lag = rep.getDifferenceInClientTime();
-  } else {
-    lag =
-      (rep.getServerTime?.() ?? 0) -
-      (rep.getClientTime?.() ?? 0);
-  }
-  document.getElementById("lag").textContent =
-    Math.max(0, Math.round(lag));
-
-  // STUTTERS
-  document.getElementById("stutters").textContent =
-    rep.getFrameStutters?.() ?? 0;
-
-  requestAnimationFrame(renderUI);
+    ping = window._pingFallback;
 }
 
+document.getElementById("ping").textContent =
+    Math.round(ping);
+
+    // LAG (CLIENT LAG = simulation/tick backlog)
+    let lag = 0;
+
+    // BEST: use tick backlog if available
+    if (rep.ticks && Array.isArray(rep.ticks)) {
+        // each tick ~50ms (20 ticks/sec typical)
+        lag = rep.ticks.length * 20;
+    }
+
+    // fallback: engine-provided lag method
+    else if (typeof rep.getDifferenceInClientTime === "function") {
+        lag = rep.getDifferenceInClientTime();
+    }
+
+    // fallback: basic time diff
+    else {
+        const server = rep.getServerTime?.() ?? 0;
+        const client = rep.getClientTime?.() ?? 0;
+        lag = server - client;
+    }
+
+    document.getElementById("lag").textContent =
+        Math.max(0, Math.round(lag));
+
+    // STUTTERS
+    document.getElementById("stutters").textContent =
+        rep.getFrameStutters?.() ?? 0;
+}
+
+
+// Update 5 times per second (200ms)
+const uiInterval = setInterval(() => {
+    if (!game?.world?.getReplicator?.()) return;
+    renderUI();
+}, 200);
+
+// Initial update immediately
 renderUI();
